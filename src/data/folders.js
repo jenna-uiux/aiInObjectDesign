@@ -1,6 +1,12 @@
 // Explicit mapping of each folder's actual filenames (extensions vary per folder)
 // canvasX/canvasY = top-left corner on the 5000×4000 virtual canvas (px)
-export const folders = [
+
+// Prefix all image paths with Vite's BASE_URL so they work both locally ('/')
+// and when deployed to a subpath like GitHub Pages ('/aiInObjectDesign/').
+const BASE = import.meta.env.BASE_URL;
+const p = (path) => `${BASE}${path.replace(/^\//, '')}`;
+
+const rawFolders = [
   {
     id: 1, label: '01',
     thumbnail: '/img/1/thumbnail.png',
@@ -69,6 +75,12 @@ export const folders = [
     canvasX: 4450, canvasY: 3300, canvasRotation: -3.0,
   },
 ];
+
+export const folders = rawFolders.map((f) => ({
+  ...f,
+  thumbnail: p(f.thumbnail),
+  images: f.images.map(p),
+}));
 
 // Decorative echo images: blurred semi-transparent copies scattered in the void
 // cx/cy = center point on 5000×4000 canvas
