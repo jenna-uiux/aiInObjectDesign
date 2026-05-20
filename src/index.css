@@ -1,0 +1,328 @@
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+:root {
+  --bg:    #F0F0F0;
+  --ink:   #1a1a1a;
+  --white: #fff;
+  --w80: rgba(26,26,26,0.85);
+  --w60: rgba(26,26,26,0.65);
+  --w40: rgba(26,26,26,0.45);
+  --w25: rgba(26,26,26,0.30);
+  --w12: rgba(26,26,26,0.15);
+  --font: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  --serif: Georgia, 'Times New Roman', serif;
+}
+
+html, body, #root {
+  width: 100%; height: 100%;
+  overflow: hidden;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: var(--font);
+  -webkit-font-smoothing: antialiased;
+}
+
+.app { position: relative; width: 100%; height: 100%; }
+
+/* ════════════════════════════════
+   INTRO
+════════════════════════════════ */
+
+.intro-screen {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 20;
+}
+
+.intro-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.6rem;
+  text-align: center;
+}
+
+.intro-title {
+  font-family: var(--font);
+  font-size: clamp(1.2rem, 2.2vw, 1.85rem);
+  font-weight: 300;
+  line-height: 1.2;
+  letter-spacing: -0.005em;
+  color: var(--ink);
+  white-space: nowrap;
+}
+
+.intro-subtitle {
+  font-size: 0.56rem;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: var(--w40);
+}
+
+.intro-explore-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  background: none;
+  border: 1px solid var(--w25);
+  color: var(--w80);
+  font-family: var(--font);
+  font-size: 0.6rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  padding: 0.8rem 2rem;
+  cursor: pointer;
+  transition: border-color 0.3s, color 0.3s;
+}
+
+.intro-explore-btn:hover {
+  border-color: var(--w80);
+  color: var(--ink);
+}
+
+.btn-label, .btn-icon { pointer-events: none; }
+
+/* ════════════════════════════════
+   3D GALLERY
+════════════════════════════════ */
+
+.g3d-viewport {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  visibility: hidden;
+  background: var(--bg);
+  perspective: 1100px;
+  perspective-origin: 50% 50%;
+}
+
+.g3d-scene {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 0;
+  height: 0;
+  transform-style: preserve-3d;
+}
+
+.g3d-item {
+  position: absolute;
+  left: 0;
+  top: 0;
+  cursor: pointer;
+  transform-style: preserve-3d;
+  will-change: transform, opacity;
+  /* Force a higher-resolution GPU raster cache for crisper 3D transforms */
+  -webkit-transform-style: preserve-3d;
+  backface-visibility: visible;
+}
+
+.gi-img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 4/3;
+  object-fit: cover;
+  will-change: filter;
+  user-select: none;
+  -webkit-user-drag: none;
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: high-quality;
+  /* Promote to its own GPU layer at native resolution */
+  transform: translateZ(0);
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+}
+
+.gi-label {
+  display: block;
+  margin-top: 0.4rem;
+  font-size: 0.4rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--w25);
+  text-align: center;
+  white-space: nowrap;
+  transition: color 0.3s;
+}
+
+.g3d-item:hover .gi-label { color: var(--w60); }
+
+/* HUD */
+.g3d-hud-tl {
+  position: absolute;
+  top: 2rem; left: 2.5rem;
+  z-index: 10;
+  pointer-events: none;
+}
+.g3d-title {
+  font-size: 0.5rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--w25);
+}
+.g3d-hud-br {
+  position: absolute;
+  bottom: 2rem; right: 2.5rem;
+  z-index: 10;
+  pointer-events: none;
+}
+.g3d-hint {
+  font-size: 0.46rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--w25);
+}
+
+/* ════════════════════════════════
+   FOLDER VIEWER
+════════════════════════════════ */
+
+.folder-viewer {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2.5rem 3rem;
+  visibility: hidden;
+  pointer-events: none;
+  background: var(--bg);
+  z-index: 15;
+}
+
+.viewer-header {
+  width: 100%;
+  max-width: 900px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1.5rem;
+}
+
+.back-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: none;
+  border: none;
+  color: var(--w60);
+  cursor: pointer;
+  font-family: var(--font);
+  font-size: 0.52rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  padding: 0.4rem 0;
+  transition: color 0.3s;
+}
+.back-btn:hover { color: var(--white); }
+
+.viewer-folder-label {
+  font-size: 0.56rem;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  color: var(--w60);
+}
+
+.viewer-counter {
+  font-size: 0.52rem;
+  letter-spacing: 0.15em;
+  color: var(--w40);
+  font-variant-numeric: tabular-nums;
+}
+
+.viewer-frame {
+  position: relative;
+  width: 100%;
+  max-width: 900px;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.viewer-glow {
+  position: absolute;
+  inset: -40px;
+  background: radial-gradient(ellipse at center, rgba(0,0,0,0.04) 0%, transparent 65%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+.viewer-image {
+  position: absolute;
+  inset: 0;
+  width: 100%; height: 100%;
+  object-fit: contain;
+  z-index: 1;
+  will-change: transform, opacity;
+}
+
+.layer-a { z-index: 2; }
+.layer-b { z-index: 1; }
+
+.nav-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 44px;
+  height: 44px;
+  background: none;
+  border: none;
+  color: var(--w40);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 20;
+  transition: color 0.3s;
+  padding: 0;
+}
+.nav-arrow:hover    { color: var(--ink); }
+.nav-arrow:disabled { opacity: 0; pointer-events: none; }
+.nav-arrow--prev    { left: 1.5rem; }
+.nav-arrow--next    { right: 1.5rem; }
+
+.viewer-bottom {
+  width: 100%;
+  max-width: 900px;
+  margin-top: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.8rem;
+}
+
+.dot-nav {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.dot {
+  width: 4px; height: 4px;
+  border-radius: 50%;
+  background: var(--w25);
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  transition: background 0.3s, transform 0.3s;
+}
+.dot--active           { background: var(--white); transform: scale(1.5); }
+.dot:hover:not(.dot--active) { background: var(--w60); }
+
+.viewer-hint {
+  font-size: 0.46rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--w25);
+}
