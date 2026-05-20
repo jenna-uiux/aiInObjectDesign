@@ -119,6 +119,9 @@ html, body, #root {
   cursor: pointer;
   transform-style: preserve-3d;
   will-change: transform, opacity;
+  /* Start invisible so there's no flash before the GSAP entrance tween runs */
+  opacity: 0;
+  visibility: hidden;
   /* Force a higher-resolution GPU raster cache for crisper 3D transforms */
   -webkit-transform-style: preserve-3d;
   backface-visibility: visible;

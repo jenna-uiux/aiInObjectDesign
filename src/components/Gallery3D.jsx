@@ -1,4 +1,4 @@
-import { useRef, useEffect, useCallback, useState } from 'react';
+import { useRef, useEffect, useCallback } from 'react';
 import gsap from 'gsap';
 import { useGSAP } from '@gsap/react';
 import { folders } from '../data/folders';
@@ -110,14 +110,23 @@ export default function Gallery3D({ onSelectFolder, isVisible }) {
   }, []);
 
   // ── Entrance / exit ───────────────────────────────────────────────────────
+  // A single source of truth for visibility animations. Previously a second
+  // useEffect also animated item.autoAlpha which fought this tween and caused
+  // the photos to flicker on first enter.
   useGSAP(() => {
     if (!viewportRef.current) return;
     if (isVisible) {
       gsap.set(viewportRef.current, { autoAlpha: 1, pointerEvents: 'all' });
-      // Items fade in
-      gsap.fromTo(itemRefs.current,
+      gsap.fromTo(
+        itemRefs.current,
         { autoAlpha: 0 },
-        { autoAlpha: 1, duration: 1.4, stagger: 0.07, ease: 'power2.out' }
+        {
+          autoAlpha: 1,
+          duration: 1.4,
+          stagger: 0.07,
+          ease: 'power2.out',
+          overwrite: 'auto',
+        }
       );
       if (hintRef.current) {
         gsap.set(hintRef.current, { autoAlpha: 1 });
@@ -130,14 +139,6 @@ export default function Gallery3D({ onSelectFolder, isVisible }) {
       });
     }
   }, { dependencies: [isVisible] });
-
-  // Restore on return from viewer
-  useEffect(() => {
-    if (!isVisible) return;
-    itemRefs.current.forEach((el) => {
-      if (el) gsap.to(el, { autoAlpha: 1, duration: 0.6, ease: 'power2.out' });
-    });
-  }, [isVisible]);
 
   // ── Hover handling ───────────────────────────────────────────────────────
   const onEnter = useCallback((i) => {
