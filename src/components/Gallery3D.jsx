@@ -28,6 +28,10 @@ export default function Gallery3D({ onSelectFolder, isVisible }) {
   const lastTimeRef = useRef(performance.now());
   const dragRef     = useRef({ moved: false, startX: 0, startY: 0 });
   const rafRef      = useRef(null);
+  // When true the rAF loop stops touching transforms/filters so the dive-in
+  // GSAP tweens fully own each item's CSS state for the duration of the
+  // transition into the folder viewer.
+  const divingRef   = useRef(false);
 
   const baseAngles  = useRef(
     folders.map((_, i) => (i / folders.length) * Math.PI * 2)
@@ -43,6 +47,14 @@ export default function Gallery3D({ onSelectFolder, isVisible }) {
     const tick = (now) => {
       const dt = now - lastTimeRef.current;
       lastTimeRef.current = now;
+
+      // While diving in, let GSAP fully control transforms — keep the rAF
+      // alive so it can resume seamlessly once the user comes back, but skip
+      // the per-item DOM writes for now.
+      if (divingRef.current) {
+        rafRef.current = requestAnimationFrame(tick);
+        return;
+      }
 
       // Smoothly lerp the global rotation speed factor toward target
       const isHovering = hoverIdxRef.current !== -1;
@@ -116,6 +128,18 @@ export default function Gallery3D({ onSelectFolder, isVisible }) {
   useGSAP(() => {
     if (!viewportRef.current) return;
     if (isVisible) {
+      // If we're returning from a dive-in, kill leftover tweens and wipe any
+      // GSAP-applied transforms/filters so the rAF loop can take over again.
+      gsap.killTweensOf(itemRefs.current);
+      gsap.killTweensOf(imgRefs.current);
+      itemRefs.current.forEach((el) => {
+        if (el) gsap.set(el, { clearProps: 'transform,opacity,visibility' });
+      });
+      imgRefs.current.forEach((img) => {
+        if (img) gsap.set(img, { clearProps: 'filter,opacity' });
+      });
+      divingRef.current = false;
+
       gsap.set(viewportRef.current, { autoAlpha: 1, pointerEvents: 'all' });
       gsap.fromTo(
         itemRefs.current,
@@ -160,19 +184,96 @@ export default function Gallery3D({ onSelectFolder, isVisible }) {
     if (Math.abs(dx) > 5 || Math.abs(dy) > 5) dragRef.current.moved = true;
   }, []);
 
+  // ── Click: dive-in transition ────────────────────────────────────────────
+  // The clicked thumbnail flies toward the camera while every other thumbnail
+  // recedes into the background with a blur. We freeze the orbit loop, seed
+  // GSAP with each item's current orbital position so the tween starts
+  // exactly where rAF left off (no jump), then run the tweens in parallel.
   const handleClick = useCallback((folder, i) => {
     if (dragRef.current.moved) return;
-    hoverIdxRef.current = -1; // release hover lock
-    // The clicked item fades to white-out feel; others dim away
-    itemRefs.current.forEach((el, j) => {
+    if (divingRef.current) return;
+    hoverIdxRef.current = -1;
+
+    // Snapshot current orbit positions so each tween starts at the right place
+    const angle = angleRef.current;
+    const positions = folders.map((_, idx) => {
+      const a = baseAngles.current[idx] + angle;
+      return {
+        x: Math.cos(a) * RADIUS_X,
+        z: Math.sin(a) * RADIUS_Z,
+        y: Math.sin(a * 2 + idx * 0.7) * Y_AMPLITUDE,
+      };
+    });
+
+    // Freeze the rAF orbit loop — GSAP now owns the items
+    divingRef.current = true;
+
+    itemRefs.current.forEach((el, idx) => {
       if (!el) return;
-      if (j === i) {
-        gsap.to(el, { autoAlpha: 0, duration: 0.5, ease: 'power2.inOut' });
+      const p = positions[idx];
+      // Seed GSAP's internal state with the current orbit position
+      gsap.set(el, { x: p.x, y: p.y, z: p.z, scale: 1, rotateY: 0 });
+
+      if (idx === i) {
+        // Clicked: fly forward to the camera, growing and centering
+        gsap.to(el, {
+          x: 0, y: 0, z: 720,
+          scale: 2.4,
+          duration: 0.85,
+          ease: 'power3.in',
+        });
+        // Slight bloom on the image as it nears the camera
+        const img = imgRefs.current[idx];
+        if (img) {
+          gsap.to(img, {
+            filter: 'brightness(1.15) contrast(1.05)',
+            duration: 0.5,
+            ease: 'power2.out',
+          });
+        }
+        // Fade the clicked item out near the end so it dissolves into the viewer
+        gsap.to(el, {
+          autoAlpha: 0,
+          duration: 0.35,
+          delay: 0.5,
+          ease: 'power2.in',
+        });
       } else {
-        gsap.to(el, { autoAlpha: 0, duration: 0.3, ease: 'power2.in', delay: j * 0.02 });
+        // Others: recede into the void with a blur and fade
+        gsap.to(el, {
+          x: p.x * 1.35,
+          y: p.y,
+          z: p.z - 380,
+          scale: 0.65,
+          autoAlpha: 0,
+          duration: 0.7,
+          delay: idx * 0.018,
+          ease: 'power2.in',
+        });
+        const img = imgRefs.current[idx];
+        if (img) {
+          gsap.to(img, {
+            filter: 'brightness(0.35) contrast(0.9) blur(6px)',
+            duration: 0.55,
+            ease: 'power2.in',
+          });
+        }
       }
     });
-    gsap.delayedCall(0.5, () => onSelectFolder(folder));
+
+    // Subtle camera dolly: tilt the scene a touch more for cinematic depth
+    if (sceneRef.current) {
+      gsap.to(sceneRef.current, {
+        rotateX: TILT_X - 2,
+        duration: 0.85,
+        ease: 'power3.inOut',
+        overwrite: 'auto',
+      });
+    }
+
+    // Hand off to the folder viewer while the dive is still in motion so
+    // the two animations overlap and the transition feels continuous.
+    gsap.delayedCall(0.65, () => onSelectFolder(folder));
   }, [onSelectFolder]);
 
   return (

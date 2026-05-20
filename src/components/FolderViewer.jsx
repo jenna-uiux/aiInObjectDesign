@@ -36,15 +36,22 @@ export default function FolderViewer({ folder, onBack, isVisible }) {
 
     if (isVisible && folder) {
       gsap.set(containerRef.current, { autoAlpha: 1, pointerEvents: 'all' });
+      // The hero photo settles from a slight zoom-out, picking up where the
+      // gallery dive-in left off — feels like the camera arrives on target.
       gsap.fromTo(
-        [headerRef.current, containerRef.current.querySelector('.viewer-frame')],
+        containerRef.current.querySelector('.viewer-frame'),
+        { autoAlpha: 0, scale: 1.08 },
+        { autoAlpha: 1, scale: 1, duration: 0.95, ease: 'power3.out' }
+      );
+      gsap.fromTo(
+        headerRef.current,
         { autoAlpha: 0, y: 24 },
-        { autoAlpha: 1, y: 0, duration: 0.9, ease: 'power3.out', stagger: 0.15 }
+        { autoAlpha: 1, y: 0, duration: 0.8, ease: 'power3.out', delay: 0.2 }
       );
       gsap.fromTo(
         [navRef.current, captionRef.current],
         { autoAlpha: 0, y: 16 },
-        { autoAlpha: 1, y: 0, duration: 0.7, ease: 'power2.out', delay: 0.4 }
+        { autoAlpha: 1, y: 0, duration: 0.7, ease: 'power2.out', delay: 0.45 }
       );
     } else {
       gsap.to(containerRef.current, {
