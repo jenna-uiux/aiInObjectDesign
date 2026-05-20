@@ -14,9 +14,15 @@ export default function App() {
     setView('viewer');
   }, []);
 
+  // Note: we intentionally do NOT null out selectedFolder on back. Doing so
+  // with a setTimeout was racing against the user picking a new folder, and
+  // also it stranded the viewer's state on the previous folder until the
+  // timeout fired. Instead we let the key prop below remount FolderViewer
+  // whenever a different folder is chosen, which gives a fresh, correctly-
+  // initialised viewer every time and avoids showing the previous folder's
+  // image for a beat.
   const handleBack = useCallback(() => {
     setView('space');
-    setTimeout(() => setSelectedFolder(null), 700);
   }, []);
 
   return (
@@ -30,6 +36,7 @@ export default function App() {
         isVisible={view === 'space'}
       />
       <FolderViewer
+        key={selectedFolder?.id ?? 'empty'}
         folder={selectedFolder}
         onBack={handleBack}
         isVisible={view === 'viewer'}
