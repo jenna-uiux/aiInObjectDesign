@@ -17,13 +17,16 @@ export default function FolderViewer({ folder, onBack, isVisible }) {
   const [buffers, setBuffers] = useState({ active: 'a', src: folder?.images[0] || '' });
   const isTransitioning = useRef(false);
 
-  // Reset index and buffer when folder changes
+  // Reset index and buffer when folder changes. Both image layers are kept
+  // fully opaque — the transition between them is a horizontal slide, not a
+  // cross-fade, so they can sit on top of each other showing the same source
+  // until the user navigates.
   useEffect(() => {
     if (folder) {
       setCurrentIndex(0);
       setBuffers({ active: 'a', src: folder.images[0] });
-      gsap.set(imageARef.current, { autoAlpha: 1 });
-      gsap.set(imageBRef.current, { autoAlpha: 0 });
+      gsap.set(imageARef.current, { autoAlpha: 1, xPercent: 0 });
+      gsap.set(imageBRef.current, { autoAlpha: 1, xPercent: 0 });
     }
   }, [folder]);
 
@@ -58,20 +61,26 @@ export default function FolderViewer({ folder, onBack, isVisible }) {
   const transitionTo = (newIndex) => {
     if (isTransitioning.current || !folder) return;
     if (newIndex < 0 || newIndex >= folder.images.length) return;
+    if (newIndex === currentIndex) return;
     isTransitioning.current = true;
 
+    // direction: +1 → moving forward (slide left), -1 → moving back (slide right)
+    const direction = newIndex > currentIndex ? 1 : -1;
     const activeEl = buffers.active === 'a' ? imageARef.current : imageBRef.current;
     const nextEl = buffers.active === 'a' ? imageBRef.current : imageARef.current;
     const nextActive = buffers.active === 'a' ? 'b' : 'a';
     const nextSrc = folder.images[newIndex];
 
-    // Preload then cross-fade
+    // Preload then slide
     const img = new Image();
     img.src = nextSrc;
     img.onload = () => {
-      setBuffers({ active: nextActive, src: nextSrc });
-      gsap.set(nextEl, { autoAlpha: 0 });
       nextEl.src = nextSrc;
+      // Position the incoming layer just off the frame on the appropriate side
+      gsap.set(nextEl, { autoAlpha: 1, xPercent: direction * 100 });
+      gsap.set(activeEl, { autoAlpha: 1, xPercent: 0 });
+
+      setBuffers({ active: nextActive, src: nextSrc });
 
       const tl = gsap.timeline({
         onComplete: () => {
@@ -80,28 +89,16 @@ export default function FolderViewer({ folder, onBack, isVisible }) {
         },
       });
 
-      // Outgoing: pan + fade
       tl.to(activeEl, {
-        autoAlpha: 0,
-        scale: 0.96,
-        duration: 0.55,
-        ease: 'power2.in',
-      });
-      // Incoming: emerge
-      tl.fromTo(
-        nextEl,
-        { autoAlpha: 0, scale: 1.04 },
-        { autoAlpha: 1, scale: 1, duration: 0.65, ease: 'power2.out' },
-        '-=0.2'
-      );
-
-      // Caption flash
-      tl.fromTo(
-        captionRef.current,
-        { autoAlpha: 0, y: 8 },
-        { autoAlpha: 1, y: 0, duration: 0.4, ease: 'power2.out' },
-        '-=0.4'
-      );
+        xPercent: -direction * 100,
+        duration: 0.65,
+        ease: 'power3.inOut',
+      }, 0);
+      tl.to(nextEl, {
+        xPercent: 0,
+        duration: 0.65,
+        ease: 'power3.inOut',
+      }, 0);
     };
     img.onerror = () => {
       isTransitioning.current = false;
@@ -152,47 +149,51 @@ export default function FolderViewer({ folder, onBack, isVisible }) {
         <span className="viewer-counter">{padded} / {paddedTotal}</span>
       </div>
 
-      <div className="viewer-frame">
-        <div className="viewer-glow" />
+      {/* Stage row: arrow · image · arrow — arrows sit just outside the
+          image, not at the viewport edge, and never overlap the photo */}
+      <div className="viewer-stage">
+        <button
+          className="nav-arrow nav-arrow--prev"
+          onClick={handlePrev}
+          disabled={currentIndex === 0}
+          aria-label="Previous"
+        >
+          <svg width="22" height="22" viewBox="0 0 32 32" fill="none">
+            <path d="M20 8L12 16l8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        </button>
 
-        {/* Double-buffer images for cross-fade */}
-        <img
-          ref={imageARef}
-          src={buffers.active === 'a' ? buffers.src : folder.images[currentIndex]}
-          alt={`Object ${folder.label} image`}
-          className="viewer-image layer-a"
-          draggable={false}
-        />
-        <img
-          ref={imageBRef}
-          src={buffers.active === 'b' ? buffers.src : folder.images[currentIndex]}
-          alt={`Object ${folder.label} image`}
-          className="viewer-image layer-b"
-          draggable={false}
-        />
+        <div className="viewer-frame">
+          <div className="viewer-glow" />
+
+          {/* Double-buffer images that slide horizontally on navigate */}
+          <img
+            ref={imageARef}
+            src={buffers.active === 'a' ? buffers.src : folder.images[currentIndex]}
+            alt={`Object ${folder.label} image`}
+            className="viewer-image layer-a"
+            draggable={false}
+          />
+          <img
+            ref={imageBRef}
+            src={buffers.active === 'b' ? buffers.src : folder.images[currentIndex]}
+            alt={`Object ${folder.label} image`}
+            className="viewer-image layer-b"
+            draggable={false}
+          />
+        </div>
+
+        <button
+          className="nav-arrow nav-arrow--next"
+          onClick={handleNext}
+          disabled={currentIndex === total - 1}
+          aria-label="Next"
+        >
+          <svg width="22" height="22" viewBox="0 0 32 32" fill="none">
+            <path d="M12 8l8 8-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        </button>
       </div>
-
-      {/* Prev / Next — pinned to viewport edges, outside the image area */}
-      <button
-        className="nav-arrow nav-arrow--prev"
-        onClick={handlePrev}
-        disabled={currentIndex === 0}
-        aria-label="Previous"
-      >
-        <svg width="22" height="22" viewBox="0 0 32 32" fill="none">
-          <path d="M20 8L12 16l8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-        </svg>
-      </button>
-      <button
-        className="nav-arrow nav-arrow--next"
-        onClick={handleNext}
-        disabled={currentIndex === total - 1}
-        aria-label="Next"
-      >
-        <svg width="22" height="22" viewBox="0 0 32 32" fill="none">
-          <path d="M12 8l8 8-8 8" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-        </svg>
-      </button>
 
       <div className="viewer-bottom" ref={navRef}>
         <div className="dot-nav" ref={captionRef}>

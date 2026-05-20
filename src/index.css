@@ -241,16 +241,29 @@ html, body, #root {
   font-variant-numeric: tabular-nums;
 }
 
-.viewer-frame {
-  position: relative;
+/* Stage row holding [prev arrow] [image frame] [next arrow]. The arrows
+   are flex siblings of the frame, so they sit right next to the image
+   with a fixed gap and never overlap it regardless of image aspect ratio. */
+.viewer-stage {
   width: 100%;
-  max-width: 900px;
+  max-width: 1040px;
   flex: 1;
   min-height: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  overflow: hidden;
+  gap: 1.25rem;
+}
+
+.viewer-frame {
+  position: relative;
+  flex: 1;
+  height: 100%;
+  max-width: 900px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden; /* clip the sliding image layers at the frame edge */
 }
 
 .viewer-glow {
@@ -267,16 +280,14 @@ html, body, #root {
   width: 100%; height: 100%;
   object-fit: contain;
   z-index: 1;
-  will-change: transform, opacity;
+  will-change: transform;
 }
 
 .layer-a { z-index: 2; }
 .layer-b { z-index: 1; }
 
 .nav-arrow {
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
+  flex-shrink: 0;
   width: 44px;
   height: 44px;
   background: none;
@@ -286,14 +297,11 @@ html, body, #root {
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 20;
-  transition: color 0.3s;
+  transition: color 0.3s, opacity 0.3s;
   padding: 0;
 }
 .nav-arrow:hover    { color: var(--ink); }
-.nav-arrow:disabled { opacity: 0; pointer-events: none; }
-.nav-arrow--prev    { left: 1.5rem; }
-.nav-arrow--next    { right: 1.5rem; }
+.nav-arrow:disabled { opacity: 0.15; pointer-events: none; }
 
 .viewer-bottom {
   width: 100%;
