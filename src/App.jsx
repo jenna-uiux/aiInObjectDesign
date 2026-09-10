@@ -1,13 +1,10 @@
 import { useState, useCallback } from 'react';
-import IntroScreen  from './components/IntroScreen';
 import Gallery3D    from './components/Gallery3D';
 import FolderViewer from './components/FolderViewer';
 
 export default function App() {
-  const [view, setView]                     = useState('intro');
+  const [view, setView]                     = useState('space');
   const [selectedFolder, setSelectedFolder] = useState(null);
-
-  const handleExplore = () => setView('space');
 
   const handleSelectFolder = useCallback((folder) => {
     setSelectedFolder(folder);
@@ -27,10 +24,6 @@ export default function App() {
 
   return (
     <div className="app">
-      <IntroScreen
-        onExplore={handleExplore}
-        isVisible={view === 'intro'}
-      />
       <Gallery3D
         onSelectFolder={handleSelectFolder}
         isVisible={view === 'space'}
